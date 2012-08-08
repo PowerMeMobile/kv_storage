@@ -1,6 +1,6 @@
 {application, kyte_kv_storage, [
 	{description, "Kyte plugin for Plugable key-value storage"},
-	{vsn, "0.1"},
+	{vsn, "0.1.0"},
 	{registered, []},
 	{applications, [
 		kernel,
