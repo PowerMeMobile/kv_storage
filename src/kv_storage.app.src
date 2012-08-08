@@ -1,0 +1,12 @@
+{application, kv_storage, [
+	{description, "Plugable key-value storage"},
+	{vsn, "0.1"},
+	{registered, []},
+	{applications, [
+		kernel,
+		stdlib,
+		lager
+	]},
+	{mod, {kv_storage_app, []}},
+	{env, []}
+]}.
