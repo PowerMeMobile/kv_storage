@@ -114,8 +114,8 @@ delete_version(CollectionName, _Version, Key) ->
 
 init([CollectionName]) ->
 	{ok, Application} = application:get_application(),
-	{ok, StorageName} = application:get_env(Application, CollectionName),
-	{ok, Db} = kv_storage:open(StorageName),
+	{ok, {StorageName, PluginInfo}} = get_storage_info(Application, CollectionName),
+	{ok, Db} = kv_storage:open(StorageName, PluginInfo),
 
 	{ok, #state{
 		db = Db
@@ -148,3 +148,45 @@ code_change(_OldVsn, State, _Extra) ->
 -spec update(OldVersion::integer(), OldValue::term(), NewVersion::integer()) -> {ok, NewValue::term()} | {error, Reason::term()}.
 update(_OldVersion, OldValue, _NewVersion) ->
 	{ok, OldValue}.
+
+-spec get_storage_info(Application::atom(), CollectionName::atom()) ->
+	{ok, {CollectionName::term(), PluginInfo::[tuple()]}} | {error, no_entry}.
+get_storage_info(Application, CollectionName) ->
+	{ok, StorageInfo} = application:get_env(Application, CollectionName),
+	parse_storage_info(Application, StorageInfo).
+
+-spec parse_storage_info(Application::atom(), StorageInfo::[tuple()]) ->
+	{ok, {CollectionName::term(), PluginInfo::[tuple()]}} | {error, no_entry}.
+parse_storage_info(Application, StorageInfo) ->
+	case parse_collection_specific_storage_info(StorageInfo) of
+		{error, no_entry} ->
+			parse_application_specific_storage_info(Application, StorageInfo);
+		{ok, ParsedInfo} ->
+			{ok, ParsedInfo}
+	end.
+
+-spec parse_collection_specific_storage_info(StorageInfo::[tuple()]) ->
+	{ok, {CollectionName::term(), PluginInfo::[tuple()]}} | {error, no_entry}.
+parse_collection_specific_storage_info(StorageInfo) ->
+	case proplists:get_value(collection_name, StorageInfo) of
+		undefined ->
+			{error, no_entry};
+		CollectionName ->
+			case proplists:get_value(kv_storage, StorageInfo) of
+				undefined ->
+					{error, no_entry};
+				PluginInfo ->
+					{ok, {CollectionName, PluginInfo}}
+			end
+	end.
+
+-spec parse_application_specific_storage_info(Application::atom(), StorageInfo::[tuple()]) ->
+	{ok, {CollectionName::term(), PluginInfo::[tuple()]}} | {error, no_entry}.
+parse_application_specific_storage_info(Application, StorageInfo) ->
+	CollectionName = StorageInfo,
+	case application:get_env(Application, kv_storage) of
+		undefined ->
+			{error, no_entry};
+		{ok, PluginInfo} ->
+			{ok, {CollectionName, PluginInfo}}
+	end.

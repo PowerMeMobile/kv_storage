@@ -2,7 +2,7 @@
 
 %% API
 -export([
-	open/1,
+	open/2,
 	close/1,
 	read/1,
 	read/2,
@@ -19,7 +19,6 @@ behaviour_info(callbacks) ->
 behaviour_info(_Other) ->
     undefined.
 
--include("application.hrl").
 -include("logging.hrl").
 
 -type handle() :: {Plugin::atom(), Collection::term()}.
@@ -28,10 +27,9 @@ behaviour_info(_Other) ->
 %% API
 %% ===================================================================
 
--spec open(CollectionName::term()) -> {ok, Handle::handle()} | {error, Reason::term()}.
-open(CollectionName) ->
-	{ok, Application} = application:get_application(),
-	{ok, {Plugin, Options}} = storage_info(Application),
+-spec open(CollectionName::term(), PluginInfo::term()) -> {ok, Handle::handle()} | {error, Reason::term()}.
+open(CollectionName, PluginInfo) ->
+	{ok, {Plugin, Options}} = parse_plugin_info(PluginInfo),
 	case Plugin:open(CollectionName, Options) of
 		{ok, Collection} ->
 			{ok, {Plugin, Collection}};
@@ -63,21 +61,16 @@ delete({Plugin, Collection}, Key) ->
 %% Internal
 %% ===================================================================
 
--spec storage_info(atom()) -> {ok, {atom(), [tuple()]}} | {error, no_entry}.
-storage_info(Application) ->
-	case application:get_env(Application, kv_storage) of
-		{ok, Args} ->
-			case proplists:get_value(plugin, Args) of
+-spec parse_plugin_info(PluginInfo::[tuple()]) -> {ok, {atom(), [tuple()]}} | {error, no_entry}.
+parse_plugin_info(PluginInfo) ->
+	case proplists:get_value(plugin, PluginInfo) of
+		undefined ->
+			{error, no_entry};
+		Plugin ->
+			case proplists:get_value(options, PluginInfo) of
 				undefined ->
 					{error, no_entry};
-				Plugin ->
-					case proplists:get_value(options, Args) of
-						undefined ->
-							{error, no_entry};
-						Options ->
-							{ok, {Plugin, Options}}
-					end
-			end;
-		undefined ->
-			{error, no_entry}
+				Options ->
+					{ok, {Plugin, Options}}
+			end
 	end.
