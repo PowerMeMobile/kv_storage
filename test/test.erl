@@ -26,34 +26,34 @@ benchmark(File, Fun) ->
     io:format(File, "~p", [WallclockSec]).
 
 benchmark_storages(TableName, RecordsCount) ->
-	Storages = [
-		{"Kyte", kyte_kv_storage, [
+	Plugins = [
+		{"Kyte", kyte_kv_storage_plugin, [
 			{name_suffix, ".kch"},
 			{parts, 2},
 			{key_codec, etf},
 			{val_codec, etf}
 		]},
-		{"MongoDB", mongodb_kv_storage, []},
-		{"Riak", riak_kv_storage, []},
-		{"PostgreSQL", postgresql_kv_storage, []},
-		{"MySQL(MyISAM)", mysql_kv_storage, [
+		{"MongoDB", mongodb_kv_storage_plugin, []},
+		{"Riak", riak_kv_storage_plugin, []},
+		{"PostgreSQL", postgresql_kv_storage_plugin, []},
+		{"MySQL(MyISAM)", mysql_kv_storage_plugin, [
 			{engine, "MyISAM"}
 		]},
-		{"MySQL(InnoDB)", mysql_kv_storage, [
+		{"MySQL(InnoDB)", mysql_kv_storage_plugin, [
 			{engine, "InnoDB"}
 		]},
-		{"Cassandra", cassandra_kv_storage, []}
+		{"Cassandra", cassandra_kv_storage_plugin, []}
 	],
 	{ok, F} = file:open(io_lib:format("~s_~p.dat", [TableName, RecordsCount]), [write]),
 	lists:foreach(
-		fun({{StorageName, StorageEngine, StorageOpts}, Index}) ->
-			io:format(F, "~s\t", [StorageName]),
-			{ok, T} = StorageEngine:open(lists:flatten(io_lib:format("~s_~p", [TableName, Index])), StorageOpts),
+		fun({{Name, Plugin, Opts}, Index}) ->
+			io:format(F, "~s\t", [Name]),
+			{ok, T} = Plugin:open(lists:flatten(io_lib:format("~s_~p", [TableName, Index])), Opts),
 			test:benchmark(F,
 				fun() ->
 					lists:foreach(
 						fun(N) ->
-							StorageEngine:write(T,
+							Plugin:write(T,
 							{"1c391c64-a038-11e1-b812-00269e42f7a5", N},
 							"1c391c64-a038-11e1-b812-00269e42f7a5")
 						end,
@@ -64,7 +64,7 @@ benchmark_storages(TableName, RecordsCount) ->
 				fun() ->
 					lists:foreach(
 						fun(N) ->
-							StorageEngine:write(T,
+							Plugin:write(T,
 							{"1c391c64-a038-11e1-b812-00269e42f7a5", N},
 							"1c391c64-a038-11e1-b812-00269e42f7a5")
 						end,
@@ -75,7 +75,7 @@ benchmark_storages(TableName, RecordsCount) ->
 				fun() ->
 					lists:foreach(
 						fun(N) ->
-							StorageEngine:read(T,
+							Plugin:read(T,
 							{"1c391c64-a038-11e1-b812-00269e42f7a5", N})
 						end,
 						lists:seq(1, RecordsCount))
@@ -85,13 +85,13 @@ benchmark_storages(TableName, RecordsCount) ->
 				fun() ->
 					lists:foreach(
 						fun(N) ->
-							StorageEngine:delete(T,
+							Plugin:delete(T,
 							{"1c391c64-a038-11e1-b812-00269e42f7a5", N})
 						end,
 						lists:seq(1, RecordsCount))
 				end),
-		   	StorageEngine:close(T),
+		   	Plugin:close(T),
 			io:format(F, "~n", [])
 		end,
-		lists:zip(Storages, lists:seq(1, length(Storages)))),
+		lists:zip(Plugins, lists:seq(1, length(Plugins)))),
 	file:close(F).

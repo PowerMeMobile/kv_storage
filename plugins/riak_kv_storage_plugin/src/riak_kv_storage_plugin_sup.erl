@@ -1,4 +1,4 @@
--module(kv_storage_sup).
+-module(riak_kv_storage_plugin_sup).
 
 -behaviour(supervisor).
 
@@ -11,8 +11,8 @@
 -export([init/1]).
 
 -include("application.hrl").
--include("logging.hrl").
--include("supervisor_spec.hrl").
+-include_lib("kv_storage/include/logging.hrl").
+-include_lib("kv_storage/include/supervisor_spec.hrl").
 
 %% ===================================================================
 %% API
@@ -29,13 +29,10 @@ start_link() ->
 init([]) ->
 	?log_debug("init", []),
 	{ok, {
-		{rest_for_one, 5, 10}, [
-			{plugins_sup,
-				{kv_storage_plugins_sup, start_link, []},
-				permanent, infinity, supervisor, [kv_storage_plugins_sup]},
-			{plugins_starter,
-				{kv_storage_plugins_starter, start_link, []},
-				transient, 5000, worker, [kv_storage_plugins_starter]}
+		{one_for_one, 5, 10}, [
+			{riak_kv_storage_plugin,
+				{riak_kv_storage_plugin, start_link, []},
+				permanent, 1000000, worker, [riak_kv_storage_plugin]}
 		]}
 	}.
 
