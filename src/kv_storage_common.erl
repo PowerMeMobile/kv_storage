@@ -44,29 +44,34 @@ start_link(CollectionName) ->
 
 %% Non-versioned
 
--spec read(CollectionName::atom()) -> {ok, [{Key::term(), Value::term()}]} | {error, Reason::term()}.
+-spec read(CollectionName::atom()) ->
+	{ok, [{Key::term(), Value::term()}]} | {error, Reason::term()}.
 read(CollectionName) ->
 	{ok, Db} = gen_server:call(CollectionName, get_db, infinity),
 	kv_storage:read(Db).
 
--spec read(CollectionName::atom(), Key::term()) -> {ok, Value::term()} | {error, Reason::term()}.
+-spec read(CollectionName::atom(), Key::term()) ->
+	{ok, Value::term()} | {error, Reason::term()}.
 read(CollectionName, Key) ->
 	{ok, Db} = gen_server:call(CollectionName, get_db, infinity),
 	kv_storage:read(Db, Key).
 
--spec write(CollectionName::atom(), Key::term(), Value::term()) -> ok | {error, Reason::term()}.
+-spec write(CollectionName::atom(), Key::term(), Value::term()) ->
+	ok | {error, Reason::term()}.
 write(CollectionName, Key, Value) ->
 	{ok, Db} = gen_server:call(CollectionName, get_db, infinity),
 	kv_storage:write(Db, Key, Value).
 
--spec delete(CollectionName::atom(), Key::term()) -> ok | {error, Reason::term()}.
+-spec delete(CollectionName::atom(), Key::term()) ->
+	ok | {error, Reason::term()}.
 delete(CollectionName, Key) ->
 	{ok, Db} = gen_server:call(CollectionName, get_db, infinity),
 	kv_storage:delete(Db, Key).
 
 %% Versioned
 
--spec read_version(CollectionName::atom(), Version::integer()) -> {ok, [{Key::term(), Value::term()}]} | {error, Reason::term()}.
+-spec read_version(CollectionName::atom(), Version::integer()) ->
+	{ok, [{Key::term(), Value::term()}]} | {error, Reason::term()}.
 read_version(CollectionName, Version) ->
 	{ok, Db} = gen_server:call(CollectionName, get_db, infinity),
 	case kv_storage:read(Db) of
@@ -85,7 +90,8 @@ read_version(CollectionName, Version) ->
 			Error
 	 end.
 
--spec read_version(CollectionName::atom(), Version::integer(), Key::term()) -> {ok, Value::term()} | {error, Reason::term()}.
+-spec read_version(CollectionName::atom(), Version::integer(), Key::term()) ->
+	{ok, Value::term()} | {error, Reason::term()}.
 read_version(CollectionName, Version, Key) ->
 	{ok, Db} = gen_server:call(CollectionName, get_db, infinity),
 	case kv_storage:read(Db, Key) of
@@ -97,13 +103,15 @@ read_version(CollectionName, Version, Key) ->
 			Error
 	 end.
 
--spec write_version(CollectionName::atom(), Version::integer(), Key::term(), Value::term()) -> ok | {error, Reason::term()}.
+-spec write_version(CollectionName::atom(), Version::integer(), Key::term(), Value::term()) ->
+	ok | {error, Reason::term()}.
 write_version(CollectionName, Version, Key, Value) ->
 	{ok, Db} = gen_server:call(CollectionName, get_db, infinity),
 	VValue = {Version, Value},
 	kv_storage:write(Db, Key, VValue).
 
--spec delete_version(CollectionName::atom(), Version::integer(), Key::term()) -> ok | {error, Reason::term()}.
+-spec delete_version(CollectionName::atom(), Version::integer(), Key::term()) ->
+	ok | {error, Reason::term()}.
 delete_version(CollectionName, _Version, Key) ->
 	{ok, Db} = gen_server:call(CollectionName, get_db, infinity),
 	kv_storage:delete(Db, Key).
@@ -145,7 +153,8 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal
 %% ===================================================================
 
--spec update(OldVersion::integer(), OldValue::term(), NewVersion::integer()) -> {ok, NewValue::term()} | {error, Reason::term()}.
+-spec update(OldVersion::integer(), OldValue::term(), NewVersion::integer()) ->
+	{ok, NewValue::term()} | {error, Reason::term()}.
 update(_OldVersion, OldValue, _NewVersion) ->
 	{ok, OldValue}.
 
