@@ -1,0 +1,143 @@
+rebar.config:
+
+{kv_storage, ".*", {git, "git://github.com/PowerMeMobile/kv_storage.git", {branch, "master"}}}
+
+reltool.config:
+
+Add "../deps/kv_storage/plugins" to lib_dirs section.
+
+Include needed plugins:
+
+% add kv_storage plugins here. this way they will be included into
+% the release, but won't be loaded automatically.
+	{app, kyte_kv_storage_plugin, [{incl_cond, include}]},
+	{app, riak_kv_storage_plugin, [{incl_cond, include}]},
+	{app, mongodb_kv_storage_plugin, [{incl_cond, include}]},
+	{app, postgresql_kv_storage_plugin, [{incl_cond, include}]},
+	{app, mysql_kv_storage_plugin, [{incl_cond, include}]},
+	{app, cassandra_kv_storage_plugin, [{incl_cond, include}]}
+
+{sys,app}.config:
+
+Uncomment needed plugins in `kv_storage' section:
+
+{kv_storage, [
+	{plugins, [
+		%% kyte_kv_storage_plugin,
+        %% mongodb_kv_storage_plugin
+		%% riak_kv_storage_plugin,
+        %% cassandra_kv_storage_plugin,
+		%% postgresql_kv_storage_plugin,
+		%% mysql_kv_storage_plugin
+	]}
+]}
+
+Setup global plugins specific settings:
+
+{kyte_kv_storage_plugin, [
+	{pool_size, 32}
+]}
+
+{mongodb_kv_storage_plugin, [
+	{conn_props, {single, {localhost, 27017}}},
+	%% {conn_props, {replica_set, {<<"rs">>, [{localhost, 27017}, {localhost, 27018}]}}},
+	{dbname, billydb},
+	{pool_size, 5}
+]}
+
+{riak_kv_storage_plugin, [
+	%% riak_kv_storage_plugin launches the pooler itself.
+	%% these settings are used instead of the pooler's.
+	{pool_max_count, 30},
+	{pool_init_count, 5},
+	{host, "localhost"},
+	{port, 8100},
+	{auto_reconnect, true}
+]}
+
+{cassandra_kv_storage_plugin, [
+	{host, "localhost"},
+	{port, 9160},
+	{keyspace, "billy"}
+]}
+
+{postgresql_kv_storage_plugin, [
+	%% postgresql_kv_storage_plugin launches the epgsql_pool itself.
+	%% these settings are used instead of the pooler's.
+	{host, "localhost"},
+	{port, 5432},
+	{pool_size, 30},
+	{database, "billy"},
+	{username, "test"},
+	{password, "test"}
+]}
+
+{mysql_kv_storage_plugin, [
+	{host, "localhost"},
+	{port, 3306},
+	{pool_size, 30},
+	{database, "billy"},
+	{username, "test"},
+	{password, "test"}
+]}
+
+Add project specific storage definitions:
+
+{your_application, [
+	%% uses application speficic kv_storage (kv_storage_common).
+	{client_registry, "client_registry"},
+	%% uses application specific kv_storage.
+	{customer_registry, "customer_registry"},
+	%% defines application specific storage (kv_storage_common).
+	{kv_storage, [
+		{plugin, kyte_kv_storage_plugin},
+		{options, [
+			{data_root, "data"},
+			{name_suffix, ".kch"},
+			{parts, 16}, % was 128
+			{key_codec, etfz},
+			{val_codec, etfz}
+		]}
+	]}
+	%% uses collection specific kv_storage (kv_storage_common).
+	{wallet_registry, [
+		{collection_name, "wallet_registry"},
+		{kv_storage, [
+			{plugin, kyte_kv_storage_plugin},
+			{options, [
+				{data_root, "data"},
+				{name_suffix, ".kch"},
+				{parts, 16},
+				{key_codec, etfz},
+				{val_codec, etfz}
+			]}
+		]}
+	]}
+
+your_application.app.src:
+
+{application, your_application,
+ [
+  {applications, [
+                  kernel,
+                  stdlib,
+                  kv_storage
+                ]},
+  {mod, {your_application_app, []}},
+  {env, []}
+]}.
+
+your_application_sup.erl:
+
+init([]) ->
+    {ok, {{one_for_one, 5, 10}, [
+		{wallet_registry,
+			{kv_storage_common, start_link, [wallet_registry]},
+			permanent, 1000000, worker, [kv_storage_common]},
+		{customer_registry,
+			{kv_storage_common, start_link, [customer_registry]},
+			permanent, 1000000, worker, [kv_storage_common]},
+		{client_registry,
+			{kv_storage_common, start_link, [client_registry]},
+			permanent, 1000000, worker, [kv_storage_common]}
+	]}}.
