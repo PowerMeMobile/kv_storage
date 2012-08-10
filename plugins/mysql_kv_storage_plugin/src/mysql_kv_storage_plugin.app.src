@@ -1,0 +1,11 @@
+{application, mysql_kv_storage_plugin, [
+	{description, "MySQL plugin for Plugable key-value storage"},
+	{vsn, "0.1.0"},
+	{registered, []},
+	{applications, [
+		kernel,
+		stdlib,
+		emysql
+	]},
+	{env, []}
+]}.

@@ -2,7 +2,7 @@
 
 %% API
 -export([
-	open/1,
+	open/2,
 	close/1,
 	read/1,
 	read/2,
@@ -19,65 +19,58 @@ behaviour_info(callbacks) ->
 behaviour_info(_Other) ->
     undefined.
 
--include("application.hrl").
 -include("logging.hrl").
 
--type handle() :: {Engine::atom(), Collection::term()}.
+-type handle() :: {Plugin::atom(), Collection::term()}.
 
 %% ===================================================================
 %% API
 %% ===================================================================
 
--spec open(CollectionName::term()) -> {ok, Handle::handle()} | {error, Reason::term()}.
-open(CollectionName) ->
-	{ok, Application} = application:get_application(),
-	{ok, {Engine, Options}} = storage_info(Application),
-	case Engine:open(CollectionName, Options) of
+-spec open(CollectionName::term(), PluginInfo::term()) -> {ok, Handle::handle()} | {error, Reason::term()}.
+open(CollectionName, PluginInfo) ->
+	{ok, {Plugin, Options}} = parse_plugin_info(PluginInfo),
+	case Plugin:open(CollectionName, Options) of
 		{ok, Collection} ->
-			{ok, {Engine, Collection}};
+			{ok, {Plugin, Collection}};
 		Error ->
 			Error
 		 end.
 
 -spec close(Handle::handle()) -> ok | {error, Reason::term()}.
-close({Engine, Collection}) ->
-	Engine:close(Collection).
+close({Plugin, Collection}) ->
+	Plugin:close(Collection).
 
 -spec read(Handle::handle()) -> {ok, [{Key::term(), Value::term()}]} | {error, Reason::term()}.
-read({Engine, Collection}) ->
-	Engine:read(Collection).
+read({Plugin, Collection}) ->
+	Plugin:read(Collection).
 
 -spec read(Handle::handle(), Key::term()) -> {ok, Value::term()} | {error, no_entry} | {error, Reason::term()}.
-read({Engine, Collection}, Key) ->
-	Engine:read(Collection, Key).
+read({Plugin, Collection}, Key) ->
+	Plugin:read(Collection, Key).
 
 -spec write(Handle::handle(), Key::term(), Value::term()) -> ok | {error, Reason::term()}.
-write({Engine, Collection},  Key, Value) ->
-	Engine:write(Collection, Key, Value).
+write({Plugin, Collection},  Key, Value) ->
+	Plugin:write(Collection, Key, Value).
 
 -spec delete(Handle::handle(), Key::term()) -> ok | {error, no_entry} | {error, Reason::term()}.
-delete({Engine, Collection}, Key) ->
-	Engine:delete(Collection, Key).
+delete({Plugin, Collection}, Key) ->
+	Plugin:delete(Collection, Key).
 
 %% ===================================================================
 %% Internal
 %% ===================================================================
 
--spec storage_info(atom()) -> {ok, {atom(), [tuple()]}} | {error, no_entry}.
-storage_info(Application) ->
-	case application:get_env(Application, storage) of
-		{ok, Args} ->
-			case proplists:get_value(engine, Args) of
+-spec parse_plugin_info(PluginInfo::[tuple()]) -> {ok, {atom(), [tuple()]}} | {error, no_entry}.
+parse_plugin_info(PluginInfo) ->
+	case proplists:get_value(plugin, PluginInfo) of
+		undefined ->
+			{error, no_entry};
+		Plugin ->
+			case proplists:get_value(options, PluginInfo) of
 				undefined ->
 					{error, no_entry};
-				Engine ->
-					case proplists:get_value(options, Args) of
-						undefined ->
-							{error, no_entry};
-						Options ->
-							{ok, {Engine, Options}}
-					end
-			end;
-		undefined ->
-			{error, no_entry}
+				Options ->
+					{ok, {Plugin, Options}}
+			end
 	end.

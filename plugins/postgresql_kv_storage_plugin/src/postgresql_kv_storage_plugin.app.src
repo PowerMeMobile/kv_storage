@@ -1,0 +1,12 @@
+{application, postgresql_kv_storage_plugin, [
+	{description, "PostgreSQL plugin for Plugable key-value storage"},
+	{vsn, "0.1.0"},
+	{registered, []},
+	{applications, [
+		kernel,
+		stdlib,
+		%egpsql_pool, postgresql_kv_storage_plugin launches the pool itself with custom parameters
+		epgsql
+	]},
+	{env, []}
+]}.
