@@ -125,6 +125,8 @@ build_db_args(FileName, Opts) ->
 	Parts = case proplists:get_value(parts, Opts, single) of
 				single ->
 					single;
+				1 ->
+					single;
 				PartsCount when is_integer(PartsCount) ->
 					kyte:parts_post_hash_sha(PartsCount)
 			end,
