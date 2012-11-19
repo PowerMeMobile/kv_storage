@@ -58,11 +58,18 @@ read(Coll) ->
 				fun() ->
 					Cursor = mongo:find(Coll, {}),
 					Documents = mongo_cursor:rest(Cursor),
-					lists:map(
-						fun({'_id', BsonBinKey, 'value', BsonBinValue}) ->
-							{bson_bin_to_term(BsonBinKey), bson_bin_to_term(BsonBinValue)}
+					Results = lists:map(
+						fun({'_id', Key, 'value', BsonBinValue}) ->
+							{Key, bson_bin_to_term(BsonBinValue)};
+
+						   (BsonDoc) ->
+							BsonKey = bson:at('_id', BsonDoc),
+							BsonValue = bson:exclude(['_id'], BsonDoc),
+							{BsonKey, BsonValue}
 						end,
-						Documents)
+						Documents),
+					mongo_cursor:close(Cursor),
+					Results
 				end),
 			case Res of
 				{ok, Entries} ->
@@ -80,11 +87,14 @@ read(Coll, Key) ->
 		{ok, Conn, DBName} ->
 			Res = mongo:do(safe, master, Conn, DBName,
 				fun() ->
-					case mongo:find_one(Coll, selector(Key)) of
+					case mongo:find_one(Coll, {'_id', Key}) of
 						{} ->
 							{error, no_entry};
-						{{'_id', _, 'value', BsonBinValue}} ->
-							{ok, bson_bin_to_term(BsonBinValue)}
+						{{'_id', _, 'value', BsonValue}} ->
+								{ok, bson_bin_to_term(BsonValue)};
+						{BsonDoc} ->
+							BsonValue = bson:exclude(['_id'],  BsonDoc),
+							{ok, bson:fields(BsonValue)}
 					end
 				end),
 			case Res of
@@ -97,13 +107,30 @@ read(Coll, Key) ->
 			{error, Reason}
 	end.
 
--spec write(Coll::binary(), Key::term(), Value::term()) -> ok | {error, Reason::term()}.
+-spec write(Coll::binary(), Key::term(), Value::[tuple()]) -> ok | {error, Reason::term()}.
+write(Coll, Key, Value) when is_list(Value) ->
+	case gen_server:call(?MODULE, get_conn_and_db, infinity) of
+		{ok, Conn, DBName} ->
+			Res = mongo:do(safe, master, Conn, DBName,
+				fun() ->
+					mongo:repsert(Coll, {'_id', Key}, bson:append({'_id', Key}, bson:document(Value)))
+				end),
+			case Res of
+				{ok, _} ->
+					ok;
+				{failure, Reason} ->
+					{error, Reason}
+			end;
+		{error, Reason} ->
+			{error, Reason}
+	end;
+
 write(Coll, Key, Value) ->
 	case gen_server:call(?MODULE, get_conn_and_db, infinity) of
 		{ok, Conn, DBName} ->
 			Res = mongo:do(safe, master, Conn, DBName,
 				fun() ->
-					mongo:repsert(Coll, selector(Key), {'_id', term_to_bson_bin(Key), 'value', term_to_bson_bin(Value)})
+						mongo:repsert(Coll, {'_id', Key}, {'_id', Key, 'value', term_to_bson_bin(Value)})
 				end),
 			case Res of
 				{ok, _} ->
@@ -115,13 +142,14 @@ write(Coll, Key, Value) ->
 			{error, Reason}
 	end.
 
+
 -spec delete(Coll::binary(), Key::term()) -> ok | {error, no_entry} | {error, Reason::term()}.
 delete(Coll, Key) ->
 	case gen_server:call(?MODULE, get_conn_and_db, infinity) of
 		{ok, Conn, DBName} ->
 			Res = mongo:do(safe, master, Conn, DBName,
 				fun() ->
-					mongo:delete(Coll, selector(Key))
+					mongo:delete(Coll, {'_id', Key})
 				end),
 			case Res of
 				{ok, _} ->
@@ -187,7 +215,7 @@ code_change(_OldVsn, State, _Extra) ->
 %% Internal
 %% ===================================================================
 
-selector(Key) -> {'_id', term_to_bson_bin(Key)}.
+%% selector(Key) -> {'_id', term_to_bson_bin(Key)}.
 
 -spec term_to_bson_bin(Term::term()) -> bson:bin().
 term_to_bson_bin(Term) ->
