@@ -90,8 +90,8 @@ read(Coll, Key) ->
 					case mongo:find_one(Coll, {'_id', Key}) of
 						{} ->
 							{error, no_entry};
-						{{'_id', _, 'value', BsonValue}} ->
-								{ok, bson_bin_to_term(BsonValue)};
+						{{'_id', _, 'value', BsonBinValue}} ->
+								{ok, bson_bin_to_term(BsonBinValue)};
 						{BsonDoc} ->
 							BsonValue = bson:exclude(['_id'],  BsonDoc),
 							{ok, bson:fields(BsonValue)}
