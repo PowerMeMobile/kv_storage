@@ -113,7 +113,7 @@ write(Coll, Key, Value) when is_list(Value) ->
 		{ok, Conn, DBName} ->
 			Res = mongo:do(safe, master, Conn, DBName,
 				fun() ->
-					mongo:repsert(Coll, {'_id', Key}, bson:append({'_id', Key}, bson:document(Value)))
+					mongo:repsert(Coll, {'_id', Key}, {'$set', bson:document(Value)})
 				end),
 			case Res of
 				{ok, _} ->
