@@ -65,7 +65,7 @@ read(Coll) ->
 						   (BsonDoc) ->
 							BsonKey = bson:at('_id', BsonDoc),
 							BsonValue = bson:exclude(['_id'], BsonDoc),
-							{BsonKey, BsonValue}
+							{BsonKey, bson:fields(BsonValue)}
 						end,
 						Documents),
 					mongo_cursor:close(Cursor),
